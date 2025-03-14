@@ -21,16 +21,17 @@ from typing import Tuple
 import numpy as np
 import torch
 
+
 BBOX_DIST_THRESHOLD = 0.1
 
 
 def get_box_from_object(obj, verbose=False):
-    if obj.get("objectOrientedBoundingBox") is not None:
-        box = obj["objectOrientedBoundingBox"]["cornerPoints"]
+    if obj.get('objectOrientedBoundingBox') is not None:
+        box = obj['objectOrientedBoundingBox']['cornerPoints']
     else:
         if verbose:
             print(f"Using axisAlignedBoundingBox for {obj['objectId']} ({obj['synset']})")
-        box = obj["axisAlignedBoundingBox"]["cornerPoints"]
+        box = obj['axisAlignedBoundingBox']['cornerPoints']
 
     return np.array(box)
 

@@ -116,7 +116,6 @@ class PreferenceDataset(Dataset):
                 {'role': 'Assistant', 'content': formatted_sample['worse_output_text']},
             ]
 
-            
             better_inputs = self.processor(
                 better_full_conversation, formatted_sample['input_image'], return_tensors='pt'
             )
@@ -124,7 +123,7 @@ class PreferenceDataset(Dataset):
                 worse_full_conversation, formatted_sample['input_image'], return_tensors='pt'
             )
 
-            return_dict = better_inputs.copy()  
+            return_dict = better_inputs.copy()
             return_dict['worse_input_ids'] = worse_inputs['input_ids']
             return_dict['task'] = 'understanding'
         elif 'output_image' in formatted_sample and formatted_sample['output_image'] is not None:
@@ -250,6 +249,6 @@ class PreferenceCollator:
                 _pixel_values_list.append(pixel_values)
 
             return_dict['pixel_values'] = torch.cat(_pixel_values_list, dim=0).to(current_device)
-            
+
         return_dict['task'] = samples[0]['task']
         return return_dict

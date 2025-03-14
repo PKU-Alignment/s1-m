@@ -27,10 +27,7 @@ from tqdm import tqdm
 from transformers import GenerationConfig
 from transformers.integrations.deepspeed import HfDeepSpeedConfig
 
-from align_anything.datasets.text_to_text import (
-    PromptOnlyDataset,
-    SupervisedDataset,
-)
+from align_anything.datasets.text_to_text import PromptOnlyDataset, SupervisedDataset
 from align_anything.models.pretrained_model import load_pretrained_models
 from align_anything.trainers.base import RLTrainerBase
 from align_anything.utils.device_utils import torch_set_device

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright 2024 PKU-Alignment Team. All Rights Reserved.
+# Copyright 2025 PKU-Alignment Team. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,16 +16,15 @@
 # ==============================================================================
 
 
-ACTOR_MODEL_NAME_OR_PATH="Qwen/Qwen2-Audio-7B-Instruct" # actor model path
-CRITIC_MODEL_NAME_OR_PATH="../outputs/qwen2_audio_rm" # critic model path
-REWARD_MODEL_NAME_OR_PATH="../outputs/qwen2_audio_rm" # reward model path
-
-TRAIN_DATASETS="PKU-Alignment/align-anything" # dataset path
-TRAIN_TEMPLATE="AA_TA2T" # dataset template
-TRAIN_NAME="text-audio-to-text" # dataset name
+MODEL_NAME_OR_PATH="Qwen/Qwen2-VL-7B-Instruct" # model path
+TRAIN_DATASETS="PKU-Alignment/s1-m_beta" # dataset path
+TRAIN_TEMPLATE="TI2T" # dataset template
 TRAIN_SPLIT="train" # split the dataset
 
-OUTPUT_DIR="../outputs/qwen2_audio_ppo" # output dir
+OUTPUT_DIR="../outputs/s1-m" # output dir
+
+# Set the CUDA_HOME environment variable
+export CUDA_HOME=$CONDA_PREFIX
 
 # For wandb online logging
 export WANDB_API_KEY=""
@@ -36,14 +35,10 @@ source ./setup.sh
 # Execute deepspeed command
 deepspeed \
      --master_port ${MASTER_PORT} \
-     --module align_anything.trainers.text_audio_to_text.ppo \
-     --actor_model_name_or_path ${ACTOR_MODEL_NAME_OR_PATH} \
-     --reward_model_name_or_path ${REWARD_MODEL_NAME_OR_PATH} \
-     --reward_critic_model_name_or_path ${CRITIC_MODEL_NAME_OR_PATH} \
+     --module align_anything.trainers.text_image_to_text.sft \
+     --model_name_or_path ${MODEL_NAME_OR_PATH} \
      --train_datasets ${TRAIN_DATASETS} \
      --train_template ${TRAIN_TEMPLATE} \
-     --train_name ${TRAIN_NAME} \
      --train_split ${TRAIN_SPLIT} \
      --output_dir ${OUTPUT_DIR} \
-     --save_interval 1000 \
-     --epochs 2
+     --model_max_length 32000 \

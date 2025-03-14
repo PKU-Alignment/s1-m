@@ -16,12 +16,12 @@
 # ==============================================================================
 
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
+from allenact.utils.system import get_logger
 from torch.distributions.utils import lazy_property
 from tqdm import tqdm
 
-from allenact.utils.system import get_logger
 from utils.data_utils import LazyJsonHouses, LazyJsonTaskSpecs
 
 
@@ -59,13 +59,13 @@ class TaskSpecPartitioner:
         desc = f"Selecting house indices for process {self.process_ind}"
         if self.max_houses is None:
             house_inds = [
-                task_spec["house_index"] for task_spec in tqdm(self.task_specs, desc=desc)
+                task_spec['house_index'] for task_spec in tqdm(self.task_specs, desc=desc)
             ]
         else:
             house_inds = [
-                task_spec["house_index"]
+                task_spec['house_index']
                 for task_spec in tqdm(self.task_specs, desc=desc)
-                if task_spec["house_index"] < self.max_houses
+                if task_spec['house_index'] < self.max_houses
             ]
 
         house_inds_for_curr_process = [
@@ -87,6 +87,6 @@ class TaskSpecPartitioner:
         task_specs_for_curr_process = [
             task_spec
             for task_spec in tqdm(self.task_specs, desc=desc)
-            if task_spec["house_index"] in unique_house_inds
+            if task_spec['house_index'] in unique_house_inds
         ]
         return task_specs_for_curr_process

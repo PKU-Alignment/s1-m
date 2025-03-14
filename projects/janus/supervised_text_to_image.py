@@ -24,10 +24,7 @@ from janus.models import MultiModalityCausalLM, VLChatProcessor, VLMImageProcess
 from PIL import Image
 from tqdm import tqdm
 
-from align_anything.utils.device_utils import (
-    set_device,
-    torch_gc,
-)
+from align_anything.utils.device_utils import set_device, torch_gc
 
 
 ignore_index = -100

@@ -28,11 +28,7 @@ from tqdm import tqdm
 from align_anything.datasets.text_to_image import SupervisedBatch, SupervisedDataset
 from align_anything.models.pretrained_model import load_pretrained_image_diffusion_models
 from align_anything.trainers.base import SupervisedTrainerBase
-from align_anything.utils.device_utils import (
-    get_current_device,
-    torch_gc,
-    torch_set_device,
-)
+from align_anything.utils.device_utils import get_current_device, torch_gc, torch_set_device
 from align_anything.utils.multi_process import get_current_device, is_main_process
 from align_anything.utils.process_image import get_image_processor
 from align_anything.utils.tools import (

@@ -1,0 +1,58 @@
+{# 
+Copyright 2025 PKU-Alignment Team. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+==============================================================================
+#}
+
+{%- set image_count = namespace(value=0) -%}
+{%- set video_count = namespace(value=0) -%}
+
+{%- for message in messages -%}
+    {%- if loop.first and message['role'] != 'system' -%}
+        {{-'<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n'-}}
+    {%- endif -%}
+
+    {{- '<|im_start|>' + message['role'] + '\n' -}}
+    {%- if message['content'] is string -%}
+        {{- message['content'] -}}
+        {%- if not (loop.last and message['role'] == 'assistant') -%}
+            {{-'<|im_end|>\n'-}}
+        {%- endif -%}
+    {%- else -%}
+        {%- for content in message['content'] -%}
+            {%- if content['type'] == 'image' or 'image' in content or 'image_url' in content -%}
+                {%- set image_count.value = image_count.value + 1 -%}
+                {%- if add_vision_id -%}
+                    {{- 'Picture ' ~ image_count.value ~ ': ' -}}
+                {%- endif -%}
+                {{- '<|vision_start|><|image_pad|><|vision_end|>' -}}
+            {%- elif content['type'] == 'video' or 'video' in content -%}
+                {%- set video_count.value = video_count.value + 1 -%}
+                {%- if add_vision_id -%}
+                    {{- 'Video ' ~ video_count.value ~ ': ' -}}
+                {%- endif -%}
+                {{- '<|vision_start|><|video_pad|><|vision_end|>' -}}
+            {%- elif 'text' in content -%}
+                {{- content['text'] -}}
+            {%- endif -%}
+        {%- endfor -%}
+        {%- if not (loop.last and message['role'] == 'assistant') -%}
+            {{- '<|im_end|>\n' -}}
+        {%- endif -%}
+    {%- endif -%}
+{%- endfor -%}
+
+{%- if add_generation_prompt and (messages|last)['role'] != 'assistant' -%}
+    {{-'<|im_start|>assistant\n'-}}
+{%- endif -%}

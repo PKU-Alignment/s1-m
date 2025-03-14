@@ -30,11 +30,7 @@ from tqdm import tqdm
 from align_anything.datasets.text_to_text.preference import PreferenceBatch
 from align_anything.datasets.text_to_text.supervised import UnmatchedSupervisedDataset
 from align_anything.trainers.text_to_text.dpo import DPOTrainer
-from align_anything.utils.device_utils import (
-    get_current_device,
-    torch_gc,
-    torch_set_device,
-)
+from align_anything.utils.device_utils import get_current_device, torch_gc, torch_set_device
 from align_anything.utils.multi_process import (
     get_all_reduce_mean,
     get_current_device,

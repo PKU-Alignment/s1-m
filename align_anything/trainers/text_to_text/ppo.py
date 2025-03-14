@@ -36,11 +36,7 @@ from align_anything.datasets.text_to_text import (
 )
 from align_anything.models.pretrained_model import load_pretrained_models
 from align_anything.trainers.base import RLTrainerBase
-from align_anything.utils.device_utils import (
-    get_current_device,
-    torch_gc,
-    torch_set_device,
-)
+from align_anything.utils.device_utils import get_current_device, torch_gc, torch_set_device
 from align_anything.utils.multi_process import (
     get_all_reduce_max,
     get_all_reduce_mean,

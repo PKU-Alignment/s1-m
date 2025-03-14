@@ -75,7 +75,7 @@ def tokenize_sample(vl_chat_processor, vl_gpt, vl_image_processor, formatted_sam
         (better_perplexity, better_min_encodings, better_min_encoding_indices),
     ) = vl_gpt.gen_vision_model.encode(better_pixel_values)
     better_full_input_ids = torch.cat([input_ids, better_min_encoding_indices])
-    
+
     worse_pixel_values = (
         vl_image_processor([formatted_sample['worse_image']], return_tensors='pt')['pixel_values']
         .to(vl_gpt.device)
@@ -87,12 +87,26 @@ def tokenize_sample(vl_chat_processor, vl_gpt, vl_image_processor, formatted_sam
         (worse_perplexity, worse_min_encodings, worse_min_encoding_indices),
     ) = vl_gpt.gen_vision_model.encode(worse_pixel_values)
     worse_full_input_ids = torch.cat([input_ids, worse_min_encoding_indices])
-    
+
     # make sure the length of better_full_input_ids and worse_full_input_ids are the same
     if better_full_input_ids.size(0) < worse_full_input_ids.size(0):
-        better_full_input_ids = torch.cat([better_full_input_ids, torch.zeros(worse_full_input_ids.size(0) - better_full_input_ids.size(0), dtype=torch.long)])
+        better_full_input_ids = torch.cat(
+            [
+                better_full_input_ids,
+                torch.zeros(
+                    worse_full_input_ids.size(0) - better_full_input_ids.size(0), dtype=torch.long
+                ),
+            ]
+        )
     elif better_full_input_ids.size(0) > worse_full_input_ids.size(0):
-        worse_full_input_ids = torch.cat([worse_full_input_ids, torch.zeros(better_full_input_ids.size(0) - worse_full_input_ids.size(0), dtype=torch.long)])
+        worse_full_input_ids = torch.cat(
+            [
+                worse_full_input_ids,
+                torch.zeros(
+                    better_full_input_ids.size(0) - worse_full_input_ids.size(0), dtype=torch.long
+                ),
+            ]
+        )
 
     return {
         'better_input_ids': better_full_input_ids.to('cpu'),

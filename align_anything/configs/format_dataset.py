@@ -180,6 +180,29 @@ class BaseFormatter:
         return [], {}
 
 
+@register_template('TI2T')
+class TI2T(BaseFormatter):
+    system_prompt: str = ''
+
+    def format_supervised_sample(
+        self, raw_sample: dict[str, Any]
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        image = raw_sample['image']
+        prompt = raw_sample['prompt']
+        answer = raw_sample['response']
+
+        return [
+            {
+                'role': 'user',
+                'content': [
+                    {'type': 'image'},
+                    {'type': 'text', 'text': prompt},
+                ],
+            },
+            {'role': 'assistant', 'content': [{'type': 'text', 'text': answer}]},
+        ], {'image': image}
+
+
 @register_template('Alpaca')
 class Alpaca(BaseFormatter):
 
