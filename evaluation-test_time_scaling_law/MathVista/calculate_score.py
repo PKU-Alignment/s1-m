@@ -16,6 +16,7 @@
 # refer: https://github.com/lupantech/MathVista/blob/main/evaluation/calculate_score.py
 import logging
 import re
+
 from Levenshtein import distance
 
 
@@ -43,7 +44,7 @@ def normalize_extracted_answer(
             try:
                 extraction = str(extraction)
             except Exception:
-                extraction = ""
+                extraction = ''
 
         # if the extraction is empty, return None
         if ignore_empty_extractions and not extraction:

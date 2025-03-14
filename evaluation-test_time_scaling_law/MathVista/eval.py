@@ -13,16 +13,15 @@
 # limitations under the License.
 # ==============================================================================
 
-import os
-import json
-import time
 import argparse
-from tqdm import tqdm
-from datasets import load_dataset
-from calculate_score import normalize_extracted_answer, safe_equal
+import json
 
 from budget_forcing import call_budget_forcing
+from calculate_score import normalize_extracted_answer, safe_equal
 from gpt4 import call_gpt4
+
+from datasets import load_dataset
+
 
 DEMO_PROMPT = """
 Please read the following example. Then extract the answer from the model response and type it at the end of the prompt.
@@ -63,15 +62,17 @@ Model response: The correct answer is (B) 8/11.
 Extracted answer: B
 """
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Evaluate MathVista dataset')
     parser.add_argument('--model', type=str, default='s1-m_7b_beta')
-    parser.add_argument('--api_base', type=str, default="http://0.0.0.0:8000/v1/chat/completions")
+    parser.add_argument('--api_base', type=str, default='http://0.0.0.0:8000/v1/chat/completions')
     parser.add_argument('--temperature', type=float, default=0.3)
     parser.add_argument('--top_p', type=float, default=0.9)
     parser.add_argument('--repetition_penalty', type=float, default=1.2)
     parser.add_argument('--num_ignore', type=int, default=1)
     return parser.parse_args()
+
 
 # refer: https://github.com/lupantech/MathVista/blob/main/evaluation/extract_answer.py#L29
 def extract_answers(responses, problems):
@@ -80,8 +81,8 @@ def extract_answers(responses, problems):
         query = problem['query']
         full_prompt = f"{DEMO_PROMPT}\n\n{query}\n\n{response}\n\nExtracted answer: "
         user_prompts.append(full_prompt)
-        
-    system_prompts = ["" for _ in range(len(user_prompts))]
+
+    system_prompts = ['' for _ in range(len(user_prompts))]
 
     extractions = call_gpt4(
         system_prompts,
@@ -89,20 +90,21 @@ def extract_answers(responses, problems):
     )
     return extractions
 
-def main(args):    
-    DATA_PATH = "AI4Math/MathVista"
+
+def main(args):
+    DATA_PATH = 'AI4Math/MathVista'
     dataset = load_dataset(DATA_PATH)['testmini']
-    system_contents = [""] * len(dataset)
+    system_contents = [''] * len(dataset)
     user_contents = [item['query'] for item in dataset]
     images = [item['decoded_image'] for item in dataset]
-    
+
     temperature = args.temperature
     top_p = args.top_p
     repetition_penalty = args.repetition_penalty
-    
+
     responses = call_budget_forcing(
-        system_contents=system_contents, 
-        user_contents=user_contents, 
+        system_contents=system_contents,
+        user_contents=user_contents,
         images=images,
         temperature=temperature,
         repetition_penalty=repetition_penalty,
@@ -111,21 +113,24 @@ def main(args):
         model=args.model,
         api_base=args.api_base,
     )
-    
-    filtered_responses = [response.split("</think>")[1] if "</think>" in response else response for response in responses]
+
+    filtered_responses = [
+        response.split('</think>')[1] if '</think>' in response else response
+        for response in responses
+    ]
     extractions = extract_answers(
         filtered_responses,
         dataset,
     )
-    
+
     num_match = 0
     num_sum = 0
-    
+
     save_results = {
-        "accuracy": 0,
-        "results": [],
+        'accuracy': 0,
+        'results': [],
     }
-    
+
     for response, extraction, item in zip(responses, extractions, dataset):
         num_sum += 1
         prediction = normalize_extracted_answer(
@@ -138,27 +143,30 @@ def main(args):
         true_or_false = safe_equal(prediction, item['answer'])
         if true_or_false:
             num_match += 1
-            
-        save_results['results'].append({
-            "query": item['query'],
-            "choices": item['choices'],
-            "answer": item['answer'],
-            "response": response,
-            "extraction": extraction,
-            "prediction": prediction,
-            "true_or_false": true_or_false,
-        })
-        
+
+        save_results['results'].append(
+            {
+                'query': item['query'],
+                'choices': item['choices'],
+                'answer': item['answer'],
+                'response': response,
+                'extraction': extraction,
+                'prediction': prediction,
+                'true_or_false': true_or_false,
+            }
+        )
+
     save_results['accuracy'] = num_match / num_sum
-    
-    result_file = "results_{args.num_ignore}.json"
-    
+
+    result_file = 'results_{args.num_ignore}.json'
+
     with open(result_file, encoding='utf-8', mode='w') as f:
         json.dump(save_results, f, indent=4, ensure_ascii=False)
-    
+
     return save_results['accuracy']
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     results = {}
     args = parse_arguments()
     # Loop through num_ignore values from 0 to 7
@@ -166,6 +174,6 @@ if __name__ == "__main__":
         args.num_ignore = num_ignore
         accuracy = main(args)
         results[num_ignore] = accuracy
-    
+
     for num_ignore, accuracy in results.items():
         print(f"num_ignore = {num_ignore}: accuracy = {accuracy:.4f}")

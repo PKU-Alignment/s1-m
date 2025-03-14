@@ -14,19 +14,18 @@
 # ==============================================================================
 
 from __future__ import annotations
-import os
-import hashlib
 
+import hashlib
+import json
 import logging
 import os
 import time
-from typing import Any, Callable
-import json
+from typing import Any
 
 import ray
-
 import requests
 from tqdm import tqdm
+
 
 @ray.remote(num_cpus=1)
 def gpt4_api(
@@ -34,18 +33,16 @@ def gpt4_api(
     user_content: str,
 ) -> Any:
     """GPT4 API"""
-    
+
     api_key = None
     api_base = None
-    model = "gpt-4-0613"
-    
-    assert api_key is not None, "Please provide the Openai API key."
-    assert api_base is not None, "Please provide the Openai API base URL."
+    model = 'gpt-4-0613'
+
+    assert api_key is not None, 'Please provide the Openai API key.'
+    assert api_base is not None, 'Please provide the Openai API base URL.'
 
     messages = [
-        {'role': 'user', 'content': [
-            {"type": "text", "text": user_content}
-        ]},
+        {'role': 'user', 'content': [{'type': 'text', 'text': user_content}]},
     ]
     max_try = 3
     while max_try > 0:
@@ -53,14 +50,14 @@ def gpt4_api(
             response = requests.post(
                 f"{api_base}",
                 headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                    "Connection": "close",
+                    'Authorization': f"Bearer {api_key}",
+                    'Content-Type': 'application/json',
+                    'Connection': 'close',
                 },
                 json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": 0.0,
+                    'model': model,
+                    'messages': messages,
+                    'temperature': 0.0,
                 },
             )
             if response.status_code == 200:
@@ -84,7 +81,7 @@ def gpt4_api(
             continue
     else:
         logging.error('API Failed...')
-        response = '' 
+        response = ''
     return response
 
 
@@ -117,12 +114,9 @@ def call_gpt4(
     contents = list(enumerate(zip(system_contents, user_contents)))
     bar = tqdm(total=len(system_contents))
     results = [None] * len(system_contents)
-    uids = [
-      generate_hash_uid({
-        'content': c
-      }) for c in contents]
+    uids = [generate_hash_uid({'content': c}) for c in contents]
     not_finished = []
-    
+
     while True:
         if len(not_finished) == 0 and len(contents) == 0:
             break
@@ -130,9 +124,9 @@ def call_gpt4(
             index, content = contents.pop()
             uid = uids[index]
             cache_path = os.path.join(cache_dir, f'{uid}.json')
-            
+
             if os.path.exists(cache_path):
-                with open(cache_path, 'r', encoding='utf-8') as f:
+                with open(cache_path, encoding='utf-8') as f:
                     try:
                         result = json.load(f)
                     except:
@@ -143,7 +137,7 @@ def call_gpt4(
                 continue
 
             future = server.remote(
-                content[0], 
+                content[0],
                 content[1],
             )
             not_finished.append([index, future])
@@ -151,7 +145,7 @@ def call_gpt4(
 
         if len(not_finished) == 0:
             continue
-        
+
         indices, futures = zip(*not_finished)
         finished, _ = ray.wait(list(futures), timeout=1.0)
         finished_indices = [indices[futures.index(task)] for task in finished]

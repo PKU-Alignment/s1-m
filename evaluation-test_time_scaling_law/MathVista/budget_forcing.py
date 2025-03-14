@@ -14,69 +14,68 @@
 # ==============================================================================
 
 from __future__ import annotations
-import os
-import hashlib
 
+import base64
+import hashlib
+import json
 import logging
 import os
 import time
-from typing import Any, Union
-import json
-
-import ray
-
-import requests
-from tqdm import tqdm
-import base64
-import json
-import PIL
-from PIL import Image
 from io import BytesIO
+from typing import Any
 
+import PIL
+import ray
+import requests
+from PIL import Image
+from tqdm import tqdm
 from transformers import AutoTokenizer
 
-tok = AutoTokenizer.from_pretrained("Qwen/Qwen2-VL-7B-Instruct")
 
-def encode_image(image: Union[str | "PIL.Image"]) -> str:
+tok = AutoTokenizer.from_pretrained('Qwen/Qwen2-VL-7B-Instruct')
+
+
+def encode_image(image: str | PIL.Image) -> str:
     """Get base64 from image"""
     if isinstance(image, str):
         image_input = Image.open(image)
     else:
         image_input = image
-    
-    if image_input.mode != "RGB":
-        image_input = image_input.convert("RGB")
+
+    if image_input.mode != 'RGB':
+        image_input = image_input.convert('RGB')
 
     buffer = BytesIO()
-    image_input.save(buffer, format="JPEG")
+    image_input.save(buffer, format='JPEG')
     img_bytes = buffer.getvalue()
-    base64_data = base64.b64encode(img_bytes).decode("utf-8")
+    base64_data = base64.b64encode(img_bytes).decode('utf-8')
     return f"data:image/jpeg;base64,{base64_data}"
+
 
 @ray.remote(num_cpus=1)
 def budget_forcing(
     system_content: str,
     user_content: str,
-    image: Union[str, list[str]],
-    max_tokens_thinking:int = 30000,
+    image: str | list[str],
+    max_tokens_thinking: int = 30000,
     num_ignore: int = 1,
     temperature: float = 0.3,
     top_p: float = 0.9,
     repetition_penalty: float = 1.05,
-    api_key = None,
-    api_base = None,
-    model = None,
+    api_key=None,
+    api_base=None,
+    model=None,
 ) -> Any:
-    
+
     images = [image] if isinstance(image, str) else image
-    
-    content = [{"type": "image_url", "image_url": {"url": img}} for img in images]
-    content.append({"type": "text", "text": user_content})
+
+    content = [{'type': 'image_url', 'image_url': {'url': img}} for img in images]
+    content.append({'type': 'text', 'text': user_content})
 
     messages = [{'role': 'user', 'content': content}]
     if system_content:
         messages.insert(0, {'role': 'system', 'content': system_content})
-        
+
     def request_api(
         messages: list[dict[str, Any]],
         max_completion_tokens: int,
@@ -93,17 +92,17 @@ def budget_forcing(
                 response = requests.post(
                     f"{api_base}",
                     headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                        "Connection": "close",
+                        'Authorization': f"Bearer {api_key}",
+                        'Content-Type': 'application/json',
+                        'Connection': 'close',
                     },
                     json={
-                        "model": model,
-                        "max_completion_tokens": max_completion_tokens,
-                        "messages": messages,
-                        "temperature": temperature,
-                        "top_p": top_p,
-                        "repetition_penalty": repetition_penalty,
+                        'model': model,
+                        'max_completion_tokens': max_completion_tokens,
+                        'messages': messages,
+                        'temperature': temperature,
+                        'top_p': top_p,
+                        'repetition_penalty': repetition_penalty,
                     },
                 )
                 if response.status_code == 200:
@@ -122,7 +121,7 @@ def budget_forcing(
                     continue
             except Exception as e:
                 logging.error(e)
-                logging.error(response)                
+                logging.error(response)
                 time.sleep(3)
                 max_try -= 1
                 continue
@@ -131,17 +130,17 @@ def budget_forcing(
             response = ''
         return response
 
-    stop_think_token = "</think>"
+    stop_think_token = '</think>'
     ignore_str_list = [
-        "Wait,", 
-        "Maybe I made a mistake.",
-        "Let me check if all the intermediate results are correct.",
-        "I need to check if I missed any step in my previous thinking.",
-        "Did I make a mistake in any step of the previous reasoning?",
-        "Let me check again,", 
-        "I need to think more and check again.", 
+        'Wait,',
+        'Maybe I made a mistake.',
+        'Let me check if all the intermediate results are correct.',
+        'I need to check if I missed any step in my previous thinking.',
+        'Did I make a mistake in any step of the previous reasoning?',
+        'Let me check again,',
+        'I need to think more and check again.',
     ]
-    
+
     current_tokens_thinking = max_tokens_thinking
     response = request_api(
         messages=messages,
@@ -159,16 +158,16 @@ def budget_forcing(
         return response
 
     messages.append({'role': 'assistant', 'content': response})
-    current_tokens_thinking -= len(tok(response)["input_ids"])
-    
-    for i in range(num_ignore): # Num of times to skip stop token
+    current_tokens_thinking -= len(tok(response)['input_ids'])
+
+    for i in range(num_ignore):  # Num of times to skip stop token
         ignore_str = ignore_str_list[i % len(ignore_str_list)]
         if current_tokens_thinking <= 0:
             break
         if stop_think_token in messages[-1]['content']:
             messages[-1]['content'] = messages[-1]['content'].split(stop_think_token)[0]
         messages[-1]['content'] = messages[-1]['content'] + ignore_str
-        
+
         response = request_api(
             messages=messages,
             temperature=temperature,
@@ -179,16 +178,16 @@ def budget_forcing(
             api_base=api_base,
             model=model,
         )
-        current_tokens_thinking -= len(tok(response)["input_ids"])
+        current_tokens_thinking -= len(tok(response)['input_ids'])
         messages[-1]['content'] = messages[-1]['content'] + response
-    
+
     ### Final answer ###
     if stop_think_token in messages[-1]['content']:
         messages[-1]['content'] = messages[-1]['content'].split(stop_think_token)[0]
-        
+
     ### WARNING: If not special token </think>, comment the following line
     messages[-1]['content'] = messages[-1]['content'] + stop_think_token + '\nFinal answer: '
-        
+
     response = request_api(
         messages=messages,
         temperature=temperature,
@@ -199,9 +198,10 @@ def budget_forcing(
         api_base=api_base,
         model=model,
     )
-    
+
     return messages[-1]['content'] + response
-        
+
+
 def generate_hash_uid(to_hash: dict | tuple | list | str):
     """Generates a unique hash for a given arguments."""
     # Convert the input to a JSON string
@@ -217,17 +217,17 @@ def generate_hash_uid(to_hash: dict | tuple | list | str):
 def call_budget_forcing(
     system_contents: list[str],
     user_contents: list[str],
-    images: list[Union[str, list[str], "PIL.Image.Image", list["PIL.Image.Image"]]] = None,
+    images: list[str | list[str] | PIL.Image.Image | list[PIL.Image.Image]] = None,
     max_tokens_thinking: int = 30000,
     num_ignore: int = 1,
     num_workers: int = 50,
     temperature: float = 0.3,
-    top_p : float = 0.9,
+    top_p: float = 0.9,
     repetition_penalty: float = 1.05,
     cache_dir: str = './cache',
-    api_key = "EMPTY",
-    api_base = "http://0.0.0.0:8000/v1/chat/completions",
-    model = "s1-m_7b_beta",
+    api_key='EMPTY',
+    api_base='http://0.0.0.0:8000/v1/chat/completions',
+    model='s1-m_7b_beta',
 ):
     """API"""
     if len(system_contents) != len(user_contents):
@@ -236,28 +236,32 @@ def call_budget_forcing(
 
     api_interaction_count = 0
     ray.init()
-    
+
     if type(images[0]) == list:
         image_inputs = [[encode_image(image) for image in image_list] for image_list in images]
     else:
         image_inputs = [encode_image(image) for image in images]
-        
+
     contents = list(enumerate(zip(system_contents, user_contents, image_inputs)))
     bar = tqdm(total=len(system_contents))
     results = [None] * len(system_contents)
-        
+
     uids = [
-      generate_hash_uid({
-        'content': content, 
-        'temperature': temperature,
-        'top_p': top_p,
-        'repetition_penalty': repetition_penalty,
-        'max_tokens_thinking': max_tokens_thinking,
-        'num_ignore': num_ignore,
-        'model': model,
-      }) for content in contents]
+        generate_hash_uid(
+            {
+                'content': content,
+                'temperature': temperature,
+                'top_p': top_p,
+                'repetition_penalty': repetition_penalty,
+                'max_tokens_thinking': max_tokens_thinking,
+                'num_ignore': num_ignore,
+                'model': model,
+            }
+        )
+        for content in contents
+    ]
     not_finished = []
-    
+
     while True:
         if len(not_finished) == 0 and len(contents) == 0:
             break
@@ -265,9 +269,9 @@ def call_budget_forcing(
             index, content = contents.pop()
             uid = uids[index]
             cache_path = os.path.join(cache_dir, f'{uid}.json')
-        
+
             if os.path.exists(cache_path):
-                with open(cache_path, 'r', encoding='utf-8') as f:
+                with open(cache_path, encoding='utf-8') as f:
                     try:
                         result = json.load(f)
                     except:
@@ -278,9 +282,9 @@ def call_budget_forcing(
                 continue
 
             future = server.remote(
-                content[0], 
+                content[0],
                 content[1],
-                content[2], 
+                content[2],
                 max_tokens_thinking,
                 num_ignore,
                 temperature,
